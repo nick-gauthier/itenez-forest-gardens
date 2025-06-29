@@ -1,0 +1,11 @@
+.Rproj.user
+.Rhistory
+.RData
+.Ruserdata
+
+/.quarto/
+.DS_Store
+.Renviron
+.Rprofile
+/_freeze
+/data/derived
