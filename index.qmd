@@ -20,14 +20,11 @@ library(mapview)
 library(maptiles)
 library(tidyterra)
 source(here('R/moondream.R'))
-
 library(patchwork)
+
+tiles <- readRDS(here('data/derived/tiles_768_sf.rds'))
+
 plot_nth_set_gg <- function(lst, n, nrow = 1, ncol = 3) {
-  # Get the nth list item
-  if (length(lst) < n) {
-    stop("List doesn't have ", n, " items")
-  }
-  
   images <- lst[[n]]
   
   plots <- map(images, ~ {
@@ -40,6 +37,7 @@ plot_nth_set_gg <- function(lst, n, nrow = 1, ncol = 3) {
   
   wrap_plots(plots, nrow = nrow, ncol = ncol)
 }
+
 get_sorted_files <- function(pattern, dir = here('data/derived/tile_768')) {
   list.files(dir, recursive = TRUE, pattern = pattern, full.names = TRUE) |>
     gtools::mixedsort()
@@ -60,8 +58,6 @@ create_image_triplets <- function() {
 }
 
 triplets <- create_image_triplets()
-tiles <- readRDS(here('data/derived/tiles_768_sf.rds'))
-
 ```
 
 ## Introduction
@@ -112,7 +108,7 @@ plot_detections(agent_test1)
 ```
 
 ```{r, fig.asp = .3333}
-plot_nth_set_gg(triplets, 59)
+plot_nth_set_gg(triplets, 58)
 ```
 
 ```{r cache = TRUE}
@@ -124,7 +120,7 @@ plot_detections(agent_test2)
 ```
 
 ```{r fig.asp = .333}
-plot_nth_set_gg(triplets, 59)
+plot_nth_set_gg(triplets, 50)
 ```
 
 ```{r cache = TRUE}
@@ -225,7 +221,7 @@ ggplot(rank_size_data, aes(x = rank, y = area)) +
   theme_minimal()
 ```
 
-These anthropogenic landscapes remain ecologically distinct today. Forest composition in mapped areas shows high concentrations of economically useful species, particularly cacao, making the region a modern hotspot for wild cacao cultivation—a direct legacy of ancient land use practices [@carson2016pre] . Local and Indigenous communities continue to harvest these resources, underscoring that these are not merely archaeological sites but living landscapes where ancient management practices continue to shape both forest ecology and human livelihoods.
+These anthropogenic landscapes remain ecologically distinct today. Forest composition in mapped areas shows high concentrations of economically useful species, particularly cacao, making the region a modern hotspot for wild cacao cultivation—a direct legacy of ancient land use practices [@carson2016pre]. Local and Indigenous communities continue to harvest these resources, underscoring that these are not merely archaeological sites but living landscapes where ancient management practices continue to shape both forest ecology and human livelihoods.
 
 ## Discussion
 
@@ -255,7 +251,7 @@ As we continue to reveal the Amazon's deep human history, we gain essential pers
 
 ## Appendix
 
-Comparison of tile-level site counts from observed data and zero-shot results from a variety of GPT models.
+Comparison of tile-level site counts from observed data and zero-shot results from a variety of GPT models with and without agentic capability.
 
 ```{r, fig.width = 12, fig.asp = .8}
 results <- readRDS(here('data/derived/results.rds')) |>
