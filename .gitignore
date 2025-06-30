@@ -4,8 +4,22 @@
 .Ruserdata
 
 /.quarto/
-.DS_Store
+*.DS_Store
 .Renviron
 .Rprofile
 /_freeze
 /data/derived
+/_manuscript
+/_manuscript
+*.zip
+*_files/
+.quarto/
+*_files/
+_manuscript/
+*.log
+*.aux
+*.bbl
+*.blg
+*.fls
+*.fdb_latexmk
+*_cache/
