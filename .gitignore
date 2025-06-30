@@ -9,7 +9,6 @@
 .Rprofile
 /_freeze
 /_manuscript
-/_manuscript
 *.zip
 *_files/
 .quarto/
