@@ -3,19 +3,28 @@ project:
 
 manuscript:
   article: index.qmd
-
+  notebooks:
+    - notebook: prompts/prompt_anthrosol_counter.md
+      title: GPT Prompt
+    - notebook: prompts/prompt_moondream.md
+      title: GPT + Moondream Prompt
 format:
   html:
+    respect-user-color-scheme: true
     comments:
       hypothesis: true
   docx: default
-  jats: default
+  #jats: default
 
   # (other formats)
-  # pdf: default
+  pdf: default
 
 execute:
   freeze: true
 
 editor: visual
+
+title-block-banner: true
+theme: lux
+
 
