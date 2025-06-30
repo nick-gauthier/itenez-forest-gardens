@@ -112,7 +112,7 @@ plot_detections(agent_test1)
 ```
 
 ```{r, fig.asp = .3333}
-plot_nth_set_gg(triplets, 59)
+plot_nth_set_gg(triplets, 58)
 ```
 
 ```{r cache = TRUE}
@@ -124,7 +124,7 @@ plot_detections(agent_test2)
 ```
 
 ```{r fig.asp = .333}
-plot_nth_set_gg(triplets, 59)
+plot_nth_set_gg(triplets, 50)
 ```
 
 ```{r cache = TRUE}

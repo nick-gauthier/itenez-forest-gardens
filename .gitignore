@@ -8,7 +8,6 @@
 .Renviron
 .Rprofile
 /_freeze
-/data/derived
 /_manuscript
 /_manuscript
 *.zip
@@ -23,3 +22,5 @@ _manuscript/
 *.fls
 *.fdb_latexmk
 *_cache/
+/data/derived/tile_768
+/data/derived/itenez_tiles
