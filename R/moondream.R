@@ -205,6 +205,7 @@ plot_detections <- function(result, title = "Detections") {
   }
 }
 
+plot_detections <- function(result, title = "Detections") {
 # Load prompt memory helper
 load_prompt_memory <- function() {
   memory_file <- "~/.anthrosol_prompt_memory.md"
