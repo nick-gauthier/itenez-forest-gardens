@@ -54,11 +54,16 @@ create_anthrosol_detector <- function(image, model = "gpt-4.1-mini", echo = FALS
   moondream_tools <- setup_moondream_tools(image)
 
   # Register Moondream point detection tool
-  chat$register_tool(tool(
-    moondream_tools$moondream_point,
-    "Detect objects in the C1 image using Moondream API. Returns center points.",
-    prompt = type_string("Simple description like 'red spots', 'pink patches', 'bright blobs'")
-  ))
+  chat$register_tool(
+   tool(
+     moondream_tools$moondream_point,
+     name = 'moondream_point',
+    description = "Detect objects in the C1 image using Moondream API. Returns center points.",
+     arguments = list(
+       prompt = type_string("Simple description of what to detect as single character string, e.g. 'red spots', 'pink patches', 'bright blobs'")
+     )
+   )
+  )
 
   # Register Moondream query tool
   # chat$register_tool(tool(
