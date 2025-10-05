@@ -136,14 +136,14 @@ if (!is.null(bbox) && length(results_json$points) > 0) {
 
 type_detection_results <- type_object(
   count = type_number('patch count'),
-  points = type_array('normalized patch coordinates',
+  points = type_array(
     items = type_object(
       x = type_number(),
-      y = type_number())),
-  detection_summary = type_object(
-    prompts = type_array('most successful prompt(s)', items = type_string(), required = FALSE),
-    notes = type_string("≤5 concise sentences summarizing reasoning", required = FALSE),
-  )
+      y = type_number()),
+    'normalized patch coordinates')#,
+ # detection_summary = type_object(
+#    prompts = type_array(items = type_string(), 'most successful prompt(s)', required = FALSE),
+#    notes = type_string("≤5 concise sentences summarizing reasoning", required = FALSE))
 )
 
 
