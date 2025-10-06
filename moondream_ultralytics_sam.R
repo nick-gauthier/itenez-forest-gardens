@@ -474,11 +474,11 @@ moondream_sam_pipeline <- function(image_path,
 # ============================================================================
 
 # Example usage:
-result <- moondream_sam_pipeline(
- image_path = ('../amazon/data/derived/itenez_tiles/tile_768/tile_768_58/geology_chip.png'),
- object_prompt = "magenta patches",
- use_negative_prompts = TRUE  # Use other points as negative prompts (default)
-)
+#result <- moondream_sam_pipeline(
+# image_path = ('../amazon/data/derived/itenez_tiles/tile_768/tile_768_58/geology_chip.png'),
+# object_prompt = "magenta patches",
+# use_negative_prompts = TRUE  # Use other points as negative prompts (default)
+#)
 #
 # To disable negative prompts:
 # result <- moondream_sam_pipeline(
@@ -493,7 +493,7 @@ result <- moondream_sam_pipeline(
 # result$segments       # SAM segmentation results
 #
 # Plot all masks together:
-plot_sam_results(result)                       # All masks with default colors
+#plot_sam_results(result)                       # All masks with default colors
 #
 # Plot individual masks:
 #plot_single_mask(result, 1)                    # Plot first mask

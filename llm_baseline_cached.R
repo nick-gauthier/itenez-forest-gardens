@@ -51,14 +51,15 @@ ade_counter <- function(imgs, prompt, model = 'o4-mini', seed = 12345){
 
 # Define model mapping
 model_mapping <- c(
- # nano = 'gpt-4.1-nano',
   mini = 'gpt-4.1-mini',
   gpt_41 = 'gpt-4.1',
   o4_mini = 'o4-mini',
-  gpt5_nano = 'gpt-5-nano',
   gpt5_mini = 'gpt-5-mini',
   gpt5 = 'gpt-5',
-  claude = 'claude-4-sonnet'
+  claude = 'claude-4-sonnet',
+  #claude_haiku = 'claude-3-5-haiku',
+  gemini_pro = 'gemini-2.5-pro',
+  gemini_flash = 'gemini-2.5-flash'
 )
 
 # Cached version of ade_counter
