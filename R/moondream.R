@@ -49,7 +49,11 @@ setup_moondream_tools <- function(ellmer_content) {
 create_anthrosol_detector <- function(image, model = "gpt-4.1-mini", echo = FALSE) {
   # Create chat detector
   prompt_moondream <- read_file(here::here('prompts/prompt_moondream.md'))
-  chat <- chat_openai(model = model, system_prompt = prompt_moondream, params = list(temperature = 0.1), echo = echo)
+  chat <- chat_openai(model = model,
+                      system_prompt = prompt_moondream,
+                      params = list(temperature = 0.1, seed = 42),
+                      echo = echo,
+                      base_url = "https://api.ai.it.ufl.edu")
 
   moondream_tools <- setup_moondream_tools(image)
 
@@ -75,8 +79,140 @@ create_anthrosol_detector <- function(image, model = "gpt-4.1-mini", echo = FALS
   chat
 }
 
+# Extract mask from SAM result
+extract_sam_mask <- function(result_obj) {
+  if (!inherits(result_obj, "python.builtin.object") ||
+      !reticulate::py_has_attr(result_obj, "masks") ||
+      is.null(result_obj$masks)) {
+    return(NULL)
+  }
+
+  np <- reticulate::import("numpy")
+  masks_data <- result_obj$masks$data
+
+  if (inherits(masks_data, "python.builtin.object")) {
+    masks_array <- reticulate::py_to_r(masks_data$cpu()$numpy())
+  } else {
+    masks_array <- masks_data
+  }
+
+  # Use first/best mask
+  mask <- masks_array[1, , , drop = TRUE]
+  mask <- ifelse(mask > 0.5, 1, 0)
+
+  mask
+}
+
+# Segment detected anthrosols with SAM
+segment_anthrosols <- function(results,
+                               sam_model = NULL,
+                               model_type = "sam2.1_b.pt",
+                               use_negative_prompts = TRUE) {
+
+  # Source SAM pipeline functions if not already loaded
+  if (!exists("init_sam", mode = "function")) {
+    source(here::here("moondream_ultralytics_sam.R"))
+  }
+
+  # Check if we have points to segment
+  if (is.null(results$points) || length(results$points) == 0) {
+    message("No points to segment")
+    return(results)
+  }
+
+  # Convert points list to tibble for SAM pipeline
+  # Handle both list of lists and already-flattened format
+  points_df <- if (is.data.frame(results$points)) {
+    # Already a data frame
+    results$points
+  } else if (is.list(results$points) && !is.null(names(results$points)) && "x" %in% names(results$points)) {
+    # Single point as named list
+    tibble::tibble(
+      object_id = 1,
+      x = results$points$x,
+      y = results$points$y
+    )
+  } else {
+    # List of point objects
+    tibble::tibble(
+      object_id = seq_along(results$points),
+      x = purrr::map_dbl(results$points, ~ if(is.list(.x)) .x$x else .x["x"]),
+      y = purrr::map_dbl(results$points, ~ if(is.list(.x)) .x$y else .x["y"])
+    )
+  }
+
+  message("Segmenting ", nrow(points_df), " detected anthrosols with SAM...")
+
+  # Initialize SAM if needed
+  if (is.null(sam_model)) {
+    sam_model <- init_sam(model_type)
+  }
+
+  # Convert to pixel coordinates
+  points_pixel <- normalized_to_pixel(points_df, results$image_path)
+
+  # Run SAM segmentation
+  segments <- segment_with_sam(
+    sam_model,
+    results$image_path,
+    points_pixel,
+    use_negative_prompts = use_negative_prompts
+  )
+
+  # Extract masks from each segment
+  masks <- list()
+  for (i in seq_along(segments)) {
+    # Extract mask from ultralytics result
+    result_obj <- if (is.list(segments[[i]]) && length(segments[[i]]) > 0) {
+      segments[[i]][[1]]
+    } else {
+      segments[[i]]
+    }
+
+    masks[[i]] <- extract_sam_mask(result_obj)
+  }
+
+  # Add to results
+  results$segments <- segments
+  results$masks <- masks
+  results$sam_model <- sam_model
+
+  message("Extracted ", sum(!purrr::map_lgl(masks, is.null)), " masks")
+
+  results
+}
+
+# Create quick visualization of points on image for review
+create_review_viz <- function(points, image_path,
+                               point_color = "cyan", point_cex = 2) {
+  if (is.null(points) || length(points) == 0) return(NULL)
+
+  # Read image
+  img <- magick::image_read(image_path)
+  img_info <- magick::image_info(img)
+  width <- img_info$width
+  height <- img_info$height
+
+  # Draw points
+  img <- magick::image_draw(img)
+  x_coords <- purrr::map_dbl(points, ~ if(is.list(.x)) .x$x else .x["x"]) * width
+  y_coords <- purrr::map_dbl(points, ~ if(is.list(.x)) .x$y else .x["y"]) * height
+  graphics::points(x_coords, y_coords, pch = 19, cex = point_cex, col = point_color)
+
+  # Add numbering
+  graphics::text(x_coords, y_coords, labels = seq_along(points),
+                pos = 3, col = point_color, cex = 1.2, font = 2)
+  grDevices::dev.off()
+
+  # Save to temp file
+  temp_path <- tempfile(fileext = ".png")
+  magick::image_write(img, temp_path)
+  temp_path
+}
+
 # Main detection function
-detect_anthrosols <- function(imgs, bbox = NULL, model = "gpt-4.1-mini", echo = FALSE) {
+detect_anthrosols <- function(imgs, bbox = NULL, model = "gpt-5-mini", echo = FALSE,
+                              segment = TRUE, sam_model = NULL) {
 
   # Encode images
   c1_ellmer <- content_image_file(imgs$c1, resize = 'none')
@@ -105,6 +241,10 @@ if (!is.null(bbox) && length(results_json$points) > 0) {
 
   results_json$image_path <- imgs$c1
 
+  # Segment with SAM if requested
+  if (segment && !is.null(results_json$points) && length(results_json$points) > 0) {
+    results_json <- segment_anthrosols(results_json, sam_model = sam_model)
+  }
 
   return(results_json)
 }
@@ -174,38 +314,62 @@ remember_prompts <- function(prompt, context = "", success_rate = NA) {
   paste("Added prompt to memory:", prompt)
 }
 
-plot_detections <- function(result, title = "Detections") {
+plot_detections <- function(result, title = "Detections",
+                            show_masks = TRUE,
+                            show_points = TRUE,
+                            mask_colors = c("#1E88E5", "#FFC107", "#D81B60",
+                                           "#004D40", "#7CB342"),
+                            mask_alpha = 0.5,
+                            point_color = "cyan",
+                            point_cex = 1) {
   image_path <- result$image_path
 
-  # Read image
-  if (grepl("\\.png$", image_path, ignore.case = TRUE)) {
-    img <- png::readPNG(image_path)
-  } else {
-    img <- jpeg::readJPEG(image_path)
+  # Read image with magick for easier compositing
+  img <- magick::image_read(image_path)
+  img_info <- magick::image_info(img)
+  width <- img_info$width
+  height <- img_info$height
+
+  # Draw SAM masks if available
+  if (show_masks && !is.null(result$masks) && length(result$masks) > 0) {
+    for (i in seq_along(result$masks)) {
+      mask <- result$masks[[i]]
+      if (is.null(mask)) next
+
+      # Get color for this mask
+      col <- mask_colors[((i - 1) %% length(mask_colors)) + 1]
+      rgb_vals <- grDevices::col2rgb(col)
+
+      # Create colored overlay [height, width, 4]
+      overlay <- array(0, dim = c(nrow(mask), ncol(mask), 4))
+      overlay[, , 1] <- mask * rgb_vals[1, 1]
+      overlay[, , 2] <- mask * rgb_vals[2, 1]
+      overlay[, , 3] <- mask * rgb_vals[3, 1]
+      overlay[, , 4] <- mask * 255 * mask_alpha
+
+      # Composite onto image
+      img <- magick::image_composite(
+        img,
+        magick::image_read(overlay / 255),
+        operator = "over"
+      )
+    }
   }
 
-  # Get dimensions
-  dims <- dim(img)
-  height <- dims[1]
-  width <- dims[2]
-
-  # Plot image
-  par(mar = c(0, 0, 2, 0))
-  plot(0, 0, type = "n", xlim = c(0, width), ylim = c(0, height),
-       xlab = "", ylab = "", axes = FALSE, main = title, asp = 1)
-  rasterImage(img, 0, 0, width, height)
-
-  # Add points (convert normalized coords to pixels)
-  if (length(result$points) > 0) {
-    x_coords <- map_dbl(result$points$x, ~.x * width)
-    y_coords <- map_dbl(result$points$y, ~(1 - .x) * height)  # Flip Y
-
-    #points(x_coords, y_coords, col = rgb(0, 0, 0.5, alpha = 0.6), pch = 19, cex = 4)
-    points(x_coords, y_coords, col = "cyan", pch = 19, cex = 1)
+  # Add points if requested
+  if (show_points && !is.null(result$points) && length(result$points) > 0) {
+    img <- magick::image_draw(img)
+    x_coords <- purrr::map_dbl(result$points, ~ if(is.list(.x)) .x$x else .x["x"]) * width
+    y_coords <- purrr::map_dbl(result$points, ~ if(is.list(.x)) .x$y else .x["y"]) * height
+    graphics::points(x_coords, y_coords, pch = 19, cex = point_cex, col = point_color)
+    grDevices::dev.off()
   }
+
+  # Plot
+  plot(img, main = title)
+  invisible(img)
 }
 
-plot_detections <- function(result, title = "Detections") {
 # Load prompt memory helper
 load_prompt_memory <- function() {
   memory_file <- "~/.anthrosol_prompt_memory.md"
